@@ -1,0 +1,14 @@
+{
+  "main_update": {
+    "title": "📄 メインブランチが更新されました！",
+    "body": "プロジェクトのドキュメントに更新がありました。\nコミット: {{ commit_message }}\nURL: {{ commit_url }}"
+  },
+  "pull_request_opened": {
+    "title": "✨ プルリクエストが作成されました！",
+    "body": "新しいプルリクエストが作成されました。\nタイトル: {{ pr_title }}\n作成者: {{ pr_author }}\nURL: {{ pr_url }}"
+  },
+  "pull_request_merged": {
+    "title": "🎉 プルリクエストがマージされました！",
+    "body": "プルリクエストがメインブランチにマージされました。\nタイトル: {{ pr_title }}\nURL: {{ pr_url }}"
+  }
+}

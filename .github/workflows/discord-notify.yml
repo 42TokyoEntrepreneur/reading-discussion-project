@@ -1,0 +1,49 @@
+name: Discord Notifications
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - closed
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Load Notification Messages
+        id: load-messages
+        run: |
+          echo "::set-output name=messages::$(cat .github/workflows/notification-messages.json)"
+
+      - name: Set Notification Variables
+        id: set-vars
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "::set-output name=title::$(jq -r '.main_update.title' <<< '${{ steps.load-messages.outputs.messages }}')"
+            echo "::set-output name=body::$(jq -r '.main_update.body' <<< '${{ steps.load-messages.outputs.messages }}' | sed "s/{{ commit_message }}/${{ github.event.head_commit.message }}/g" | sed "s/{{ commit_url }}/${{ github.event.head_commit.url }}/g")"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event.action }}" = "opened" ]; then
+              echo "::set-output name=title::$(jq -r '.pull_request_opened.title' <<< '${{ steps.load-messages.outputs.messages }}')"
+              echo "::set-output name=body::$(jq -r '.pull_request_opened.body' <<< '${{ steps.load-messages.outputs.messages }}' | sed "s/{{ pr_title }}/${{ github.event.pull_request.title }}/g" | sed "s/{{ pr_author }}/${{ github.event.pull_request.user.login }}/g" | sed "s/{{ pr_url }}/${{ github.event.pull_request.html_url }}/g")"
+            elif [ "${{ github.event.action }}" = "closed" ] && [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+              echo "::set-output name=title::$(jq -r '.pull_request_merged.title' <<< '${{ steps.load-messages.outputs.messages }}')"
+              echo "::set-output name=body::$(jq -r '.pull_request_merged.body' <<< '${{ steps.load-messages.outputs.messages }}' | sed "s/{{ pr_title }}/${{ github.event.pull_request.title }}/g" | sed "s/{{ pr_url }}/${{ github.event.pull_request.html_url }}/g")"
+            fi
+          fi
+
+      - name: Send Notification to Discord
+        if: steps.set-vars.outputs.title != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d '{"content": "**${{ steps.set-vars.outputs.title }}**\n\n${{ steps.set-vars.outputs.body }}"}' \
+               $DISCORD_WEBHOOK_URL
+
